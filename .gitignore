@@ -33,6 +33,14 @@ test-results/
 playwright-report/
 .last-run.json
 
+# generated submission packages
+automaspec-code.zip
+Roman_Diploma_Submission_Package_*/
+Roman_Diploma_Submission_Package_*.zip
+
+# diploma artifacts (PDF/DOCX etc)
+diploma/
+
 # Devenv
 .devenv*
 devenv.local.nix
@@ -43,6 +51,9 @@ devenv.local.yaml
 
 # pre-commit
 .pre-commit-config.yaml
+
+# IDE generated files
+.vscode/PythonImportHelper-v2-Completion.json
 
 db/local.db
 playwright-report/
