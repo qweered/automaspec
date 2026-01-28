@@ -57,3 +57,6 @@ devenv.local.yaml
 
 db/local.db
 playwright-report/
+
+# Temporary files for DOCX generation
+.temp/

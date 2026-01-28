@@ -97,42 +97,12 @@ QA Engineers, Developers, and Product Managers in fast-paced teams.
 AutomaSpec acts as the **central nervous system** for quality assurance, syncing code, tests, and requirements.
 
 **Key Capabilities:**
-- 🔗 **Deep Integration:** Automatically syncs Vitest execution results to requirements.
-- 📋 **Live Traceability:** Requirement $\leftrightarrow$ Test Spec $\leftrightarrow$ Execution Result. All linked.
+- 🔗 **Deep Integration:** Automatically syncs test results to requirements.
+- 📋 **Live Traceability:** Requirement $\leftrightarrow$ Test Spec $\leftrightarrow$ Test Result. All linked.
 - 🤖 **AI Assistant:** Chat with your test suite to generate cases or explain failures.
 
 **Why it's different:**
 Unlike erratic spreadsheets or siloed Jira plugins, AutomaSpec represents the **state of truth directly from CI/CD**.
-
----
-
-# Demo: Core Workflow
-
-1.  **Define Requirements:**
-    Users create requirements linked to specs.
-    
-2.  **Sync Execution:**
-    CI pipeline pushes results; coverage updates instantly.
-
-3.  **Trace & Audit:**
-    Drill down from a business goal to the specific test.
-
-<br>
-
-![w:100% center](../assets/screenshots/prod-folder-view-desktop-cropped.png)
-
----
-
-# Demo: Analytics Dashboard
-
-**Real-Time Insights:**
-Comprehensive metrics and visualizations for test coverage and execution trends.
-
-- **Coverage Metrics:** Track requirement coverage over time.
-- **Execution Trends:** Visualize test pass/fail rates.
-- **Period Selection:** Analyze performance across different timeframes.
-
-![w:100% center](../assets/screenshots/prod-analytics-desktop.png)
 
 ---
 
@@ -145,7 +115,32 @@ Organized view of projects, folders, and test specifications.
 - **Quick Access:** Tree view of folders and test specs.
 - **Status Overview:** Visual indicators for test execution status.
 
-![w:100% center](../assets/screenshots/prod-folder-components-desktop.png)
+![w:100% center](../docs/assets/screenshots/prod-folder-components-desktop.png)
+
+---
+
+# Demo: AI Assistant
+
+**What it does:**
+Generate test cases, explain failures, and answer questions about requirements and coverage.
+
+**Example flow:**
+- Ask for missing cases by requirement or feature.
+- Get suggested scenarios with acceptance criteria.
+- Export to a test spec and link to the requirement.
+
+> *"Generate edge cases for password reset and link them to requirement AUTH-12."*
+
+---
+
+# Demo: Settings
+
+**Configuration Hub:**
+Central place to manage user preferences, api keys, and settings.
+
+- **Profile & Access:** Update user profile, roles, and permissions.
+- **API Keys:** Manage API keys for CI/CD webhook integration.
+- **Settings:** Choose theming, delete account, etc.
 
 ---
 
@@ -158,7 +153,7 @@ Organized view of projects, folders, and test specifications.
 - **Database:** Distributed SQLite (Turso) managed via Drizzle ORM.
 - **AI Integration:** Vercel AI SDK into Google/OpenAI.
 
-![bg right:55% fit](../assets/diagrams/architecture.png)
+![bg right:55% fit](../docs/assets/diagrams/architecture.png)
 
 ---
 
@@ -176,131 +171,6 @@ Organized view of projects, folders, and test specifications.
 
 ---
 
-<!-- _header: Criterion 1: Front-End Configuration -->
-
-# Front-End Architecture
-
-**WHY:**
-Needed a scalable, SEO-friendly SPA with robust server integration for a complex dashboard.
-
-**WHAT:**
-- **App Router:** Hierarchical routing for Organizations/Projects.
-- **Server State:** TanStack Query for caching & optimistic updates.
-- **Type Safety:** End-to-end typed API calls via oRPC.
-- **Components:** Modular UI using Radix Primitives.
-
-**TECH:** Next.js 16, React 19, TanStack Query, Radix UI, Tailwind CSS v4
-
-```typescript
-// Type-safe reactive data fetching with TanStack Query
-const [period] = useState<AnalyticsPeriod>('30d')
-const { data } = useQuery(orpc.analytics.getMetrics.queryOptions({ 
-    input: { period } 
-}))
-```
-
----
-
-<!-- _header: Criterion 2: Adaptive UI -->
-
-# Adaptive User Interface
-
-**WHY:** 
-To provide a seamless experience for QA engineers across Desktop (4K), Tablet, and Mobile devices.
-
-**WHAT:**
-- **Mobile-First:** Styles defined for small screens, scaling up via breakpoints (`sm`, `md`, `lg`).
-- **Responsive Navigation:** Sidebar on desktop -> Drawer on mobile.
-- **Theme Support:** System-aware Dark/Light mode integration.
-- **Accessibility:** WCAG 2.1 AA compliance via Radix UI.
-
-**TECH:** Tailwind CSS v4, Lucide Icons, next-themes, Radix UI Primitives
-
-<br>
-
-> *Verified support for 16:9, 21:9, and mobile portrait aspect ratios.*
-
----
-
-<!-- _header: Criterion 3: API Documentation -->
-
-# API Documentation
-
-**WHY:** 
-Ensure external integrations and developers have an accurate source of truth.
-
-**WHAT:**
-- **Auto-Generated:** Docs derived from Zod schemas.
-- **Interactive:** Scalar UI for in-browser testing.
-- **OpenAPI:** Exports valid 3.1 spec.
-- **Zero Drift:** Docs update with code.
-
-**TECH:** oRPC, Scalar UI, Zod, OpenAPI
-
-![bg right:55% fit](../assets/screenshots/prod-rpc-docs-desktop.png)
-
----
-
-<!-- _header: Criterion 4: CI/CD Pipeline -->
-
-# CI/CD Pipeline
-
-**WHY:**
-To automate quality control and ensure safe, frequent deployments to production.
-
-**WHAT:**
-1.  **Quality Gate:** Lint (`oxlint`), Format, Typecheck before merge.
-2.  **Security:** Automated `pnpm audit` for dependencies.
-3.  **Test Automation:** Unit testing execution with coverage.
-4.  **Delivery:** Auto-deploy to Vercel (Preview/Prod).
-
-**TECH:** GitHub Actions, Vercel CLI, Docker, Lefthook
-
----
-
-<!-- _header: Criterion 4: CI/CD Pipeline -->
-
-# CI/CD Pipeline: Diagram
-
-![w:100%](../assets/diagrams/ci-cd.png)
-
----
-
-<!-- _header: Criterion 5: Containerization -->
-
-# Containerization
-
-**WHY:**
-To guarantee environment consistency ("works on my machine") and enable portability.
-
-**WHAT:**
-- **Multi-Stage Build:** `deps` → `builder` → `runner` (Optimized layers).
-- **Standalone Mode:** Trims `node_modules` for ~100MB final image.
-- **Security:** Runs as non-root user (`nextjs`).
-- **Orchestration:** Docker Compose profiles for Dev vs. Prod.
-
-**TECH:** Docker, Docker Compose, node:24-alpine, Next.js Standalone
-
-```dockerfile
-# Final Stage
-FROM base AS runner
-USER nextjs
-COPY --from=builder /app/.next/standalone ./
-CMD ["node", "server.js"]
-```
-
----
-
-# Challenges & Solutions
-
-| Challenge | Solution | 
-| :--- | :--- |
-| **Vercel vs Docker** | *Problem:* Vercel doesn't run Docker. <br> *Fix:* Used Hybrid strategy—Docker for local dev/testing reliability, Vercel for scalable Serverless production. |
-| **Type Synchronization** | *Problem:* Keeping API and Frontend types in sync. <br> *Fix:* Implemented **oRPC** to infer frontend types directly from backend Zod schemas. |
-| **Complex State** | *Problem:* Managing real-time spec updates. <br> *Fix:* Utilized **TanStack Query** for efficient server-state caching and optimistic UI updates. |
-
----
-
 # Results
 
 **✅ Project Checklist**
@@ -309,7 +179,7 @@ CMD ["node", "server.js"]
 - [x] **Quality:** CI/CD pipeline with 100% E2E critical flow coverage.
 - [x] **Documentation:** Auto-generated API Reference.
 
-![bg right:50% fit](../assets/screenshots/prod-analytics-desktop.png)
+![bg right:50% fit](../docs/assets/screenshots/prod-analytics-desktop.png)
 
 ---
 
@@ -326,5 +196,5 @@ CMD ["node", "server.js"]
 ## Thank You!
 
 **Student:** Aliaksandr Samatyia
-**Contact:** aliaksandr.samatyia@stud.ehu.lt
+**Contact:** aliaksandr.samatyia@stud.esdc.lt
 
