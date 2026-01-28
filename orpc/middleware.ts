@@ -18,6 +18,6 @@ export const organizationMiddleware = os.$context<{ session?: Session }>().middl
     }
 
     return await next({
-        context: { organizationId: context.session.session.activeOrganizationId }
+        context: { session: context.session, organizationId: context.session.session.activeOrganizationId }
     })
 })

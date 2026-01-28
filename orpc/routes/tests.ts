@@ -366,9 +366,46 @@ const listTests = os.tests.list.handler(async ({ context, input }) => {
         .where(and(...conditions))
 })
 
-const upsertTest = os.tests.upsert.handler(async ({ input }) => {
+const upsertTest = os.tests.upsert.handler(async ({ input, context }) => {
     const { id = crypto.randomUUID(), ...updates } = input
-    const result = await db
+    const organizationId = context.organizationId
+
+    const requirement = await db
+        .select({ id: testRequirement.id })
+        .from(testRequirement)
+        .innerJoin(testSpec, eq(testRequirement.specId, testSpec.id))
+        .where(and(eq(testRequirement.id, updates.requirementId), eq(testSpec.organizationId, organizationId)))
+        .limit(1)
+
+    if (!requirement || requirement.length === 0) {
+        throw new ORPCError('Requirement not found or access denied')
+    }
+
+    if (input.id) {
+        const requirementIds = db
+            .select({ id: testRequirement.id })
+            .from(testRequirement)
+            .innerJoin(testSpec, eq(testRequirement.specId, testSpec.id))
+            .where(eq(testSpec.organizationId, organizationId))
+
+        const updated = await db
+            .update(test)
+            .set({
+                ...updates,
+                status: updates.status,
+                framework: updates.framework
+            })
+            .where(and(eq(test.id, input.id), inArray(test.requirementId, requirementIds)))
+            .returning()
+
+        if (!updated || updated.length === 0) {
+            throw new ORPCError('Test not found or access denied')
+        }
+
+        return updated[0]
+    }
+
+    const inserted = await db
         .insert(test)
         .values({
             id,
@@ -376,17 +413,9 @@ const upsertTest = os.tests.upsert.handler(async ({ input }) => {
             status: updates.status,
             framework: updates.framework
         })
-        .onConflictDoUpdate({
-            target: test.id,
-            set: {
-                ...updates,
-                status: updates.status,
-                framework: updates.framework
-            }
-        })
         .returning()
 
-    return result[0]
+    return inserted[0]
 })
 
 const editTest = os.tests.edit.handler(async ({ input, context }) => {
@@ -414,9 +443,22 @@ const editTest = os.tests.edit.handler(async ({ input, context }) => {
     return result[0]
 })
 
-const deleteTest = os.tests.delete.handler(async ({ input }) => {
-    await db.delete(test).where(eq(test.id, input.id))
-    return { success: true }
+const deleteTest = os.tests.delete.handler(async ({ input, context }) => {
+    const organizationId = context.organizationId
+    const requirementIds = db
+        .select({ id: testRequirement.id })
+        .from(testRequirement)
+        .innerJoin(testSpec, eq(testRequirement.specId, testSpec.id))
+        .where(eq(testSpec.organizationId, organizationId))
+
+    const deleted = await db
+        .delete(test)
+        .where(and(eq(test.id, input.id), inArray(test.requirementId, requirementIds)))
+        .returning({
+            id: test.id
+        })
+
+    return { success: deleted.length > 0 }
 })
 
 const listTestRequirements = os.testRequirements.list.handler(async ({ input, context }) => {

@@ -8,8 +8,11 @@ import { authMiddleware, organizationMiddleware } from '@/orpc/middleware'
 
 const os = implement(accountContract).use(authMiddleware).use(organizationMiddleware)
 
-const exportAccount = os.account.export.handler(async ({ input }) => {
+const exportAccount = os.account.export.handler(async ({ input, context }) => {
     const { userId } = input
+    if (userId !== context.session.user.id) {
+        throw new ORPCError('Access denied')
+    }
 
     const userData = await db
         .select({ id: user.id, name: user.name, email: user.email, image: user.image, createdAt: user.createdAt })
@@ -39,8 +42,11 @@ const exportAccount = os.account.export.handler(async ({ input }) => {
     }
 })
 
-const deleteAccount = os.account.delete.handler(async ({ input }) => {
+const deleteAccount = os.account.delete.handler(async ({ input, context }) => {
     const { userId } = input
+    if (userId !== context.session.user.id) {
+        throw new ORPCError('Access denied')
+    }
 
     const result = await db.delete(user).where(eq(user.id, userId)).returning()
 
