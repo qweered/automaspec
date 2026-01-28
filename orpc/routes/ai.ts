@@ -23,6 +23,7 @@ import {
     AI_PROVIDERS,
     AI_RATE_LIMIT_MAX_REQUESTS,
     AI_RATE_LIMIT_WINDOW_MS,
+    ORPC_ERROR_CODES,
     OPENROUTER_BASE_URL
 } from '@/lib/constants'
 import { aiContract } from '@/orpc/contracts/ai'
@@ -90,7 +91,9 @@ export function containsBlockedPattern(value: string): boolean {
 export function enforceLengthLimits(messages: AiChatMessage[]) {
     for (const message of messages) {
         if (message.content.length > AI_MAX_PROMPT_LENGTH) {
-            throw new ORPCError(`Input exceeds ${AI_MAX_PROMPT_LENGTH} characters.`)
+            throw new ORPCError(ORPC_ERROR_CODES.unprocessableContent, {
+                message: `Input exceeds ${AI_MAX_PROMPT_LENGTH} characters.`
+            })
         }
     }
 }
@@ -101,7 +104,9 @@ export function enforcePromptGuard(messages: AiChatMessage[]) {
         return
     }
     if (containsBlockedPattern(last)) {
-        throw new ORPCError('Input contains disallowed instructions.')
+        throw new ORPCError(ORPC_ERROR_CODES.unprocessableContent, {
+            message: 'Input contains disallowed instructions.'
+        })
     }
 }
 
@@ -123,7 +128,7 @@ export function enforceRateLimit(organizationId: string) {
         bucket.splice(0, firstValidIndex)
     }
     if (bucket.length >= AI_RATE_LIMIT_MAX_REQUESTS) {
-        throw new ORPCError('Rate limit exceeded. Please retry shortly.')
+        throw new ORPCError(ORPC_ERROR_CODES.tooManyRequests, { message: 'Rate limit exceeded. Please retry shortly.' })
     }
     bucket.push(now)
     rateLimitBuckets.set(organizationId, bucket)
@@ -329,7 +334,7 @@ const chat = os.ai.chat.handler(async ({ input, context }) => {
     if (provider === AI_PROVIDERS.openrouter) {
         const apiKey = process.env[AI_ENV_KEYS.openrouter]
         if (!apiKey) {
-            throw new ORPCError(`Missing ${AI_ENV_KEYS.openrouter}`)
+            throw new ORPCError(ORPC_ERROR_CODES.internalServerError, { message: `Missing ${AI_ENV_KEYS.openrouter}` })
         }
 
         const openrouter = createOpenRouter({
@@ -364,15 +369,15 @@ const chat = os.ai.chat.handler(async ({ input, context }) => {
             const message =
                 error instanceof Error ? error.message : 'OpenRouter returned an error. Please retry in a moment.'
             console.error('OpenRouter AI error:', error)
-            throw new ORPCError(message)
+            throw new ORPCError(ORPC_ERROR_CODES.badGateway, { message })
         }
     }
 
     const apiKey = process.env[AI_ENV_KEYS.google]
     if (!apiKey) {
-        throw new ORPCError(
-            `Missing ${AI_ENV_KEYS.google}. Set ${AI_ENV_KEYS.openrouter} or ${AI_ENV_KEYS.google} to use AI.`
-        )
+        throw new ORPCError(ORPC_ERROR_CODES.internalServerError, {
+            message: `Missing ${AI_ENV_KEYS.google}. Set ${AI_ENV_KEYS.openrouter} or ${AI_ENV_KEYS.google} to use AI.`
+        })
     }
 
     const googleProvider = createGoogleGenerativeAI({
@@ -405,7 +410,7 @@ const chat = os.ai.chat.handler(async ({ input, context }) => {
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Gemini returned an error. Please retry.'
         console.error('Gemini AI error:', error)
-        throw new ORPCError(message)
+        throw new ORPCError(ORPC_ERROR_CODES.badGateway, { message })
     }
 })
 

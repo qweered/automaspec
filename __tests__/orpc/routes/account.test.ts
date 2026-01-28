@@ -88,6 +88,6 @@ describe('account routes', () => {
     it('throws when deleting missing user', async () => {
         dbMocks.setDeleteResults([[]])
 
-        await expect(client.account.delete({ userId: 'missing' })).rejects.toThrow('User not found')
+        await expect(client.account.delete({ userId: 'user-1' })).rejects.toThrow('User not found')
     })
 })

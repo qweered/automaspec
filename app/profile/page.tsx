@@ -8,6 +8,7 @@ import {
     LogOut,
     AlertTriangle,
     Download,
+    Github,
     Trash2,
     Key,
     Copy,
@@ -20,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 
+import { CiCdSetupModal } from '@/app/(onboarding)/onboarding/components/ci-cd-setup-modal'
 import { ModeToggle } from '@/components/theme-toggler'
 import {
     AlertDialog,
@@ -35,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { CI_CD } from '@/lib/constants'
 import { safeClient } from '@/lib/orpc/orpc'
 import { authClient } from '@/lib/shared/better-auth-client'
 
@@ -58,6 +61,7 @@ export default function ProfilePage() {
     const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null)
     const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([])
     const [loadingKeys, setLoadingKeys] = useState(true)
+    const [ciCdSetupOpen, setCiCdSetupOpen] = useState(false)
 
     const fetchApiKeys = useCallback(async () => {
         setLoadingKeys(true)
@@ -181,9 +185,15 @@ export default function ProfilePage() {
                 <div className="mt-8 grid gap-6">
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <Key className="size-5" />
-                                <CardTitle>API Keys</CardTitle>
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                    <Key className="size-5" />
+                                    <CardTitle>API Keys</CardTitle>
+                                </div>
+                                <Button size="sm" variant="outline" onClick={() => setCiCdSetupOpen(true)}>
+                                    <Github className="mr-2 size-4" />
+                                    CI/CD setup
+                                </Button>
                             </div>
                             <CardDescription>Manage API keys for CI/CD webhook integration</CardDescription>
                         </CardHeader>
@@ -405,6 +415,14 @@ export default function ProfilePage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                <CiCdSetupModal
+                    open={ciCdSetupOpen}
+                    onOpenChange={setCiCdSetupOpen}
+                    onContinue={() => setCiCdSetupOpen(false)}
+                    showSkip={false}
+                    primaryActionLabel="Close"
+                    defaultTab={CI_CD.UI.DEFAULT_TAB.SETTINGS}
+                />
             </div>
         </div>
     )

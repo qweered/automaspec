@@ -9,10 +9,11 @@ import type { VitestReport } from '@/lib/types'
 
 import { DashboardHeader } from '@/app/dashboard/components/header'
 import { ImportTestsDialog } from '@/app/dashboard/components/import-tests-dialog'
-import { SAMPLE_VITEST_REPORT } from '@/lib/constants'
+import { CI_CD, SAMPLE_VITEST_REPORT } from '@/lib/constants'
 import { safeClient } from '@/lib/orpc/orpc'
 import { authClient } from '@/lib/shared/better-auth-client'
 
+import { CiCdSetupModal } from './components/ci-cd-setup-modal'
 import { OnboardingEmptyState } from './components/onboarding-empty-state'
 import { SampleProjectModal } from './components/sample-project-modal'
 
@@ -21,6 +22,7 @@ export default function OnboardingPage() {
     const queryClient = useQueryClient()
     const [importDialogOpen, setImportDialogOpen] = useState(false)
     const [sampleModalOpen, setSampleModalOpen] = useState(false)
+    const [ciCdModalOpen, setCiCdModalOpen] = useState(false)
     const { data: activeOrganization, isPending: isPendingActiveOrg } = authClient.useActiveOrganization()
     const { data: organizations, isPending: isPendingOrganizations } = authClient.useListOrganizations()
 
@@ -58,7 +60,7 @@ export default function OnboardingPage() {
             await queryClient.invalidateQueries({ queryKey: ['test-requirements'] })
             await queryClient.invalidateQueries({ queryKey: ['tests'] })
             setSampleModalOpen(false)
-            router.replace('/dashboard')
+            setCiCdModalOpen(true)
         },
         onError: (error) => {
             toast.error(error.message || 'Failed to load sample data')
@@ -82,7 +84,7 @@ export default function OnboardingPage() {
 
     const handleImportComplete = () => {
         void queryClient.invalidateQueries({ queryKey: ['test-specs'] })
-        router.replace('/dashboard')
+        setCiCdModalOpen(true)
     }
 
     const handleOpenSampleModal = () => {
@@ -112,6 +114,17 @@ export default function OnboardingPage() {
                 onOpenChange={setSampleModalOpen}
                 onConfirm={handleConfirmSampleProject}
                 isLoading={importSampleMutation.isPending}
+            />
+            <CiCdSetupModal
+                open={ciCdModalOpen}
+                onOpenChange={(open) => {
+                    setCiCdModalOpen(open)
+                    if (!open) {
+                        router.replace('/dashboard')
+                    }
+                }}
+                onContinue={() => router.replace('/dashboard')}
+                defaultTab={CI_CD.UI.DEFAULT_TAB.ONBOARDING}
             />
         </>
     )

@@ -6,7 +6,7 @@ import type { TestStatus, SpecStatus, VitestTestResult, TestFolder, TestRequirem
 
 import { db } from '@/db'
 import { testFolder, testSpec, testRequirement, test, DEFAULT_SPEC_STATUSES } from '@/db/schema'
-import { TEST_STATUSES, SPEC_STATUSES } from '@/lib/constants'
+import { ORPC_ERROR_CODES, TEST_STATUSES, SPEC_STATUSES } from '@/lib/constants'
 import { normalizeTestFileName, extractFolderPath, extractRelativeFilePath } from '@/lib/utils'
 import { testsContract } from '@/orpc/contracts/tests'
 import { authMiddleware, organizationMiddleware } from '@/orpc/middleware'
@@ -66,7 +66,7 @@ const getTestFolder = os.testFolders.get.handler(async ({ input, context }) => {
         .limit(1)
 
     if (!folder || folder.length === 0) {
-        throw new ORPCError('Folder not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Folder not found' })
     }
 
     return folder[0]
@@ -188,7 +188,7 @@ const upsertTestFolder = os.testFolders.upsert.handler(async ({ input, context }
             .limit(1)
 
         if (existing.length > 0 && existing[0].organizationId !== context.organizationId) {
-            throw new ORPCError('Folder not found or access denied')
+            throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Folder not found or access denied' })
         }
     }
 
@@ -217,7 +217,7 @@ const editTestFolder = os.testFolders.edit.handler(async ({ input, context }) =>
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Folder not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Folder not found' })
     }
 
     return result[0]
@@ -283,7 +283,7 @@ const upsertTestSpec = os.testSpecs.upsert.handler(async ({ input, context }) =>
             .limit(1)
 
         if (existing.length > 0 && existing[0].organizationId !== context.organizationId) {
-            throw new ORPCError('Spec not found or access denied')
+            throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
         }
     }
 
@@ -319,7 +319,7 @@ const editTestSpec = os.testSpecs.edit.handler(async ({ input, context }) => {
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Spec not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found' })
     }
 
     return result[0]
@@ -335,7 +335,7 @@ const deleteTestSpec = os.testSpecs.delete.handler(async ({ input, context }) =>
         .limit(1)
 
     if (!spec || spec.length === 0 || spec[0].organizationId !== organizationId) {
-        throw new ORPCError('Spec not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
     }
     await db.delete(testSpec).where(eq(testSpec.id, input.id))
     return { success: true }
@@ -366,9 +366,46 @@ const listTests = os.tests.list.handler(async ({ context, input }) => {
         .where(and(...conditions))
 })
 
-const upsertTest = os.tests.upsert.handler(async ({ input }) => {
+const upsertTest = os.tests.upsert.handler(async ({ input, context }) => {
     const { id = crypto.randomUUID(), ...updates } = input
-    const result = await db
+    const organizationId = context.organizationId
+
+    const requirement = await db
+        .select({ id: testRequirement.id })
+        .from(testRequirement)
+        .innerJoin(testSpec, eq(testRequirement.specId, testSpec.id))
+        .where(and(eq(testRequirement.id, updates.requirementId), eq(testSpec.organizationId, organizationId)))
+        .limit(1)
+
+    if (!requirement || requirement.length === 0) {
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Requirement not found or access denied' })
+    }
+
+    if (input.id) {
+        const requirementIds = db
+            .select({ id: testRequirement.id })
+            .from(testRequirement)
+            .innerJoin(testSpec, eq(testRequirement.specId, testSpec.id))
+            .where(eq(testSpec.organizationId, organizationId))
+
+        const updated = await db
+            .update(test)
+            .set({
+                ...updates,
+                status: updates.status,
+                framework: updates.framework
+            })
+            .where(and(eq(test.id, input.id), inArray(test.requirementId, requirementIds)))
+            .returning()
+
+        if (!updated || updated.length === 0) {
+            throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Test not found or access denied' })
+        }
+
+        return updated[0]
+    }
+
+    const inserted = await db
         .insert(test)
         .values({
             id,
@@ -376,17 +413,9 @@ const upsertTest = os.tests.upsert.handler(async ({ input }) => {
             status: updates.status,
             framework: updates.framework
         })
-        .onConflictDoUpdate({
-            target: test.id,
-            set: {
-                ...updates,
-                status: updates.status,
-                framework: updates.framework
-            }
-        })
         .returning()
 
-    return result[0]
+    return inserted[0]
 })
 
 const editTest = os.tests.edit.handler(async ({ input, context }) => {
@@ -408,15 +437,28 @@ const editTest = os.tests.edit.handler(async ({ input, context }) => {
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Test not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Test not found' })
     }
 
     return result[0]
 })
 
-const deleteTest = os.tests.delete.handler(async ({ input }) => {
-    await db.delete(test).where(eq(test.id, input.id))
-    return { success: true }
+const deleteTest = os.tests.delete.handler(async ({ input, context }) => {
+    const organizationId = context.organizationId
+    const requirementIds = db
+        .select({ id: testRequirement.id })
+        .from(testRequirement)
+        .innerJoin(testSpec, eq(testRequirement.specId, testSpec.id))
+        .where(eq(testSpec.organizationId, organizationId))
+
+    const deleted = await db
+        .delete(test)
+        .where(and(eq(test.id, input.id), inArray(test.requirementId, requirementIds)))
+        .returning({
+            id: test.id
+        })
+
+    return { success: deleted.length > 0 }
 })
 
 const listTestRequirements = os.testRequirements.list.handler(async ({ input, context }) => {
@@ -453,7 +495,7 @@ const upsertTestRequirement = os.testRequirements.upsert.handler(async ({ input,
         .limit(1)
 
     if (!spec || spec.length === 0 || spec[0].organizationId !== organizationId) {
-        throw new ORPCError('Spec not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
     }
 
     const result = await db
@@ -493,7 +535,7 @@ const editTestRequirement = os.testRequirements.edit.handler(async ({ input, con
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Requirement not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Requirement not found or access denied' })
     }
 
     return result[0]
@@ -509,7 +551,7 @@ const replaceTestRequirementsForSpec = os.testRequirements.replaceForSpec.handle
         .limit(1)
 
     if (!spec || spec.length === 0) {
-        throw new ORPCError('Spec not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
     }
 
     const inputIds: string[] = []
@@ -527,7 +569,9 @@ const replaceTestRequirementsForSpec = os.testRequirements.replaceForSpec.handle
 
         for (const requirement of existing) {
             if (requirement.specId !== input.specId) {
-                throw new ORPCError('Requirement does not belong to the selected spec')
+                throw new ORPCError(ORPC_ERROR_CODES.badRequest, {
+                    message: 'Requirement does not belong to the selected spec'
+                })
             }
         }
     }
@@ -612,7 +656,7 @@ const deleteTestRequirement = os.testRequirements.delete.handler(async ({ input,
         .limit(1)
 
     if (!requirement || requirement.length === 0) {
-        throw new ORPCError('Requirement not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Requirement not found or access denied' })
     }
 
     await db.delete(testRequirement).where(eq(testRequirement.id, input.id))

@@ -407,7 +407,8 @@ describe('tests routes', () => {
         const filtered = await client.tests.list({ requirementId: 'req-2' })
         expect(filtered.length).toBe(1)
 
-        dbMocks.setInsertResults([[createTest('t1', 'req-1', TEST_STATUSES.passed)]])
+        dbMocks.setSelectResults([[{ id: 'req-1' }]])
+        dbMocks.setUpdateResults([[createTest('t1', 'req-1', TEST_STATUSES.passed)]])
         const upserted = await client.tests.upsert({
             id: 't1',
             status: TEST_STATUSES.passed,
