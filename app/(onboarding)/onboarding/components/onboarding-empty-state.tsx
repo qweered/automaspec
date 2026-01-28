@@ -60,7 +60,8 @@ export function OnboardingEmptyState({ onImportClick, onStartFromScratch }: Onbo
     const steps = [
         { id: 1, title: 'Create organization', completed: true },
         { id: 2, title: 'Import tests', completed: false },
-        { id: 3, title: 'View dashboard', completed: false }
+        { id: 3, title: 'Connect CI/CD', completed: false },
+        { id: 4, title: 'View dashboard', completed: false }
     ]
 
     return (

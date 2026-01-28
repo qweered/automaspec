@@ -216,6 +216,20 @@ export const NODE_ENVS = {
     test: 'test'
 } as const
 
+export const ORPC_ERROR_CODES = {
+    badRequest: 'BAD_REQUEST',
+    unauthorized: 'UNAUTHORIZED',
+    forbidden: 'FORBIDDEN',
+    notFound: 'NOT_FOUND',
+    unprocessableContent: 'UNPROCESSABLE_CONTENT',
+    tooManyRequests: 'TOO_MANY_REQUESTS',
+    badGateway: 'BAD_GATEWAY',
+    serviceUnavailable: 'SERVICE_UNAVAILABLE',
+    internalServerError: 'INTERNAL_SERVER_ERROR'
+} as const
+
+export const WEBHOOK_TEST_API_KEY = 'TestApiKey'
+
 export const PACKAGE_MANAGER_COMMANDS = {
     pnpm: 'pnpm vitest --reporter=json --outputFile=test-results.json',
     npm: 'npx vitest --reporter=json --outputFile=test-results.json',
@@ -453,4 +467,68 @@ export const SAMPLE_VITEST_REPORT = {
 export const DEMO_CREDENTIALS = {
     email: 'demo@automaspec.com',
     password: 'demo1234'
+} as const
+
+export const CI_CD = {
+    WEBHOOK_PATH: '/api/webhook/sync-tests',
+    GITHUB_ACTIONS: {
+        WORKFLOW_FILE_NAME: 'automaspec-sync.yml',
+        WORKFLOW_PATH: '.github/workflows/automaspec-sync.yml',
+        SECRETS: {
+            API_KEY: 'AUTOMASPEC_API_KEY',
+            WEBHOOK_URL: 'AUTOMASPEC_WEBHOOK_URL'
+        },
+        WORKFLOW_TEMPLATE: `name: Sync Test Results to Automaspec
+
+on:
+    push:
+        branches: [main, master, dev]
+    pull_request:
+        branches: [main, master, dev]
+
+jobs:
+    test-and-sync:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              run: pnpm run ci
+
+            - name: Run tests with JSON reporter
+              run: pnpm test -- run --reporter=json --outputFile=test-results.json
+              continue-on-error: true
+
+            - name: Sync test results to Automaspec
+              if: always()
+              run: |
+                  curl -X POST \\
+                    -H "Content-Type: application/json" \\
+                    -H "x-api-key: ${'$'}{{ secrets.AUTOMASPEC_API_KEY }}" \\
+                    -d @test-results.json \\
+                    "${'$'}{{ secrets.AUTOMASPEC_WEBHOOK_URL }}"
+`
+    },
+    UI: {
+        TABS: {
+            API_KEY: 'api-key',
+            WORKFLOW: 'workflow',
+            SECRETS: 'secrets'
+        },
+        DEFAULT_TAB: {
+            ONBOARDING: 'api-key',
+            SETTINGS: 'workflow'
+        }
+    }
 } as const

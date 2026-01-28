@@ -12,22 +12,22 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6.0.1
+              uses: actions/checkout@v4
 
             - name: Install pnpm
-              uses: pnpm/action-setup@v4.2.0
+              uses: pnpm/action-setup@v4
 
             - name: Setup Node.js
-              uses: actions/setup-node@v6.1.0
+              uses: actions/setup-node@v4
               with:
-                  node-version: '24'
+                  node-version: '22'
                   cache: 'pnpm'
 
             - name: Install dependencies
               run: pnpm run ci
 
             - name: Run tests with JSON reporter
-              run: pnpm test run -- --reporter=json --outputFile=test-results.json
+              run: pnpm test -- run --reporter=json --outputFile=test-results.json
               continue-on-error: true
 
             - name: Sync test results to Automaspec
