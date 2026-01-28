@@ -6,7 +6,7 @@ import type { TestStatus, SpecStatus, VitestTestResult, TestFolder, TestRequirem
 
 import { db } from '@/db'
 import { testFolder, testSpec, testRequirement, test, DEFAULT_SPEC_STATUSES } from '@/db/schema'
-import { TEST_STATUSES, SPEC_STATUSES } from '@/lib/constants'
+import { ORPC_ERROR_CODES, TEST_STATUSES, SPEC_STATUSES } from '@/lib/constants'
 import { normalizeTestFileName, extractFolderPath, extractRelativeFilePath } from '@/lib/utils'
 import { testsContract } from '@/orpc/contracts/tests'
 import { authMiddleware, organizationMiddleware } from '@/orpc/middleware'
@@ -66,7 +66,7 @@ const getTestFolder = os.testFolders.get.handler(async ({ input, context }) => {
         .limit(1)
 
     if (!folder || folder.length === 0) {
-        throw new ORPCError('Folder not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Folder not found' })
     }
 
     return folder[0]
@@ -188,7 +188,7 @@ const upsertTestFolder = os.testFolders.upsert.handler(async ({ input, context }
             .limit(1)
 
         if (existing.length > 0 && existing[0].organizationId !== context.organizationId) {
-            throw new ORPCError('Folder not found or access denied')
+            throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Folder not found or access denied' })
         }
     }
 
@@ -217,7 +217,7 @@ const editTestFolder = os.testFolders.edit.handler(async ({ input, context }) =>
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Folder not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Folder not found' })
     }
 
     return result[0]
@@ -283,7 +283,7 @@ const upsertTestSpec = os.testSpecs.upsert.handler(async ({ input, context }) =>
             .limit(1)
 
         if (existing.length > 0 && existing[0].organizationId !== context.organizationId) {
-            throw new ORPCError('Spec not found or access denied')
+            throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
         }
     }
 
@@ -319,7 +319,7 @@ const editTestSpec = os.testSpecs.edit.handler(async ({ input, context }) => {
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Spec not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found' })
     }
 
     return result[0]
@@ -335,7 +335,7 @@ const deleteTestSpec = os.testSpecs.delete.handler(async ({ input, context }) =>
         .limit(1)
 
     if (!spec || spec.length === 0 || spec[0].organizationId !== organizationId) {
-        throw new ORPCError('Spec not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
     }
     await db.delete(testSpec).where(eq(testSpec.id, input.id))
     return { success: true }
@@ -378,7 +378,7 @@ const upsertTest = os.tests.upsert.handler(async ({ input, context }) => {
         .limit(1)
 
     if (!requirement || requirement.length === 0) {
-        throw new ORPCError('Requirement not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Requirement not found or access denied' })
     }
 
     if (input.id) {
@@ -399,7 +399,7 @@ const upsertTest = os.tests.upsert.handler(async ({ input, context }) => {
             .returning()
 
         if (!updated || updated.length === 0) {
-            throw new ORPCError('Test not found or access denied')
+            throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Test not found or access denied' })
         }
 
         return updated[0]
@@ -437,7 +437,7 @@ const editTest = os.tests.edit.handler(async ({ input, context }) => {
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Test not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Test not found' })
     }
 
     return result[0]
@@ -495,7 +495,7 @@ const upsertTestRequirement = os.testRequirements.upsert.handler(async ({ input,
         .limit(1)
 
     if (!spec || spec.length === 0 || spec[0].organizationId !== organizationId) {
-        throw new ORPCError('Spec not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
     }
 
     const result = await db
@@ -535,7 +535,7 @@ const editTestRequirement = os.testRequirements.edit.handler(async ({ input, con
         .returning()
 
     if (!result || result.length === 0) {
-        throw new ORPCError('Requirement not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Requirement not found or access denied' })
     }
 
     return result[0]
@@ -551,7 +551,7 @@ const replaceTestRequirementsForSpec = os.testRequirements.replaceForSpec.handle
         .limit(1)
 
     if (!spec || spec.length === 0) {
-        throw new ORPCError('Spec not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Spec not found or access denied' })
     }
 
     const inputIds: string[] = []
@@ -569,7 +569,9 @@ const replaceTestRequirementsForSpec = os.testRequirements.replaceForSpec.handle
 
         for (const requirement of existing) {
             if (requirement.specId !== input.specId) {
-                throw new ORPCError('Requirement does not belong to the selected spec')
+                throw new ORPCError(ORPC_ERROR_CODES.badRequest, {
+                    message: 'Requirement does not belong to the selected spec'
+                })
             }
         }
     }
@@ -654,7 +656,7 @@ const deleteTestRequirement = os.testRequirements.delete.handler(async ({ input,
         .limit(1)
 
     if (!requirement || requirement.length === 0) {
-        throw new ORPCError('Requirement not found or access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'Requirement not found or access denied' })
     }
 
     await db.delete(testRequirement).where(eq(testRequirement.id, input.id))

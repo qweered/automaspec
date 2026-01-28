@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 
 import { db } from '@/db'
 import { user, member, organization } from '@/db/schema/auth'
+import { ORPC_ERROR_CODES } from '@/lib/constants'
 import { accountContract } from '@/orpc/contracts/account'
 import { authMiddleware, organizationMiddleware } from '@/orpc/middleware'
 
@@ -11,7 +12,7 @@ const os = implement(accountContract).use(authMiddleware).use(organizationMiddle
 const exportAccount = os.account.export.handler(async ({ input, context }) => {
     const { userId } = input
     if (userId !== context.session.user.id) {
-        throw new ORPCError('Access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.forbidden, { message: 'Access denied' })
     }
 
     const userData = await db
@@ -45,13 +46,13 @@ const exportAccount = os.account.export.handler(async ({ input, context }) => {
 const deleteAccount = os.account.delete.handler(async ({ input, context }) => {
     const { userId } = input
     if (userId !== context.session.user.id) {
-        throw new ORPCError('Access denied')
+        throw new ORPCError(ORPC_ERROR_CODES.forbidden, { message: 'Access denied' })
     }
 
     const result = await db.delete(user).where(eq(user.id, userId)).returning()
 
     if (result.length === 0) {
-        throw new ORPCError('User not found')
+        throw new ORPCError(ORPC_ERROR_CODES.notFound, { message: 'User not found' })
     }
 
     return { success: true }

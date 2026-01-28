@@ -5,7 +5,7 @@ import type { TestStatus, SpecStatus, VitestTestResult } from '@/lib/types'
 
 import { db } from '@/db'
 import { testSpec, testRequirement, test, member } from '@/db/schema'
-import { TEST_STATUSES, SPEC_STATUSES } from '@/lib/constants'
+import { NODE_ENVS, SPEC_STATUSES, TEST_STATUSES, WEBHOOK_TEST_API_KEY } from '@/lib/constants'
 import { createServerLogger } from '@/lib/server-logger'
 import { auth } from '@/lib/shared/better-auth'
 
@@ -22,7 +22,10 @@ export async function POST(request: Request) {
         let userId: string
         let organizationId: string
 
-        if (apiKeyHeader === 'TestApiKey') {
+        if (apiKeyHeader === WEBHOOK_TEST_API_KEY) {
+            if (process.env.NODE_ENV !== NODE_ENVS.test) {
+                return NextResponse.json({ error: 'Invalid API key' }, { status: 401 })
+            }
             const firstMembership = await db
                 .select({ organizationId: member.organizationId, userId: member.userId })
                 .from(member)
