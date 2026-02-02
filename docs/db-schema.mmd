@@ -1,0 +1,154 @@
+erDiagram
+    account {
+        id text PK
+        account_id text
+        provider_id text
+        user_id text FK
+        access_token text
+        refresh_token text
+        id_token text
+        access_token_expires_at integer
+        refresh_token_expires_at integer
+        scope text
+        password text
+        created_at integer
+        updated_at integer
+    }
+    apiKey {
+        id text PK
+        name text
+        start text
+        prefix text
+        key text
+        user_id text FK
+        refill_interval integer
+        refill_amount integer
+        last_refill_at integer
+        enabled integer
+        rate_limit_enabled integer
+        rate_limit_time_window integer
+        rate_limit_max integer
+        request_count integer
+        remaining integer
+        last_request integer
+        expires_at integer
+        created_at integer
+        updated_at integer
+        permissions text
+        metadata text
+    }
+    invitation {
+        id text PK
+        organization_id text FK
+        email text
+        role text
+        status text
+        expires_at integer
+        inviter_id text FK
+        created_at integer
+    }
+    member {
+        id text PK
+        organization_id text FK
+        user_id text FK
+        role text
+        created_at integer
+        updated_at integer
+    }
+    organization {
+        id text PK
+        name text
+        slug text
+        logo text
+        plan text
+        created_at integer
+        updated_at integer
+        metadata text
+    }
+    rateLimit {
+        id text PK
+        key text
+        count integer
+        last_request integer
+    }
+    session {
+        id text PK
+        expires_at integer
+        token text
+        created_at integer
+        updated_at integer
+        ip_address text
+        user_agent text
+        user_id text FK
+        active_organization_id text
+    }
+    user {
+        id text PK
+        name text
+        email text
+        email_verified integer
+        image text
+        created_at integer
+        updated_at integer
+    }
+    verification {
+        id text PK
+        identifier text
+        value text
+        expires_at integer
+        created_at integer
+        updated_at integer
+    }
+    test {
+        id text PK
+        status text
+        framework text
+        code text
+        requirement_id text FK
+        created_at text
+        updated_at text
+    }
+    test_folder {
+        id text PK
+        name text
+        description text
+        parent_folder_id text
+        organization_id text FK
+        order integer
+        created_at text
+        updated_at text
+    }
+    test_requirement {
+        id text PK
+        name text
+        description text
+        order integer
+        spec_id text FK
+        created_at text
+        updated_at text
+    }
+    test_spec {
+        id text PK
+        name text
+        file_name text
+        description text
+        statuses text
+        number_of_tests integer
+        folder_id text FK
+        organization_id text FK
+        created_at text
+        updated_at text
+    }
+
+    user ||--o{ account : "account_user_id_user_id_fk"
+    user ||--o{ apiKey : "apiKey_user_id_user_id_fk"
+    organization ||--o{ invitation : "invitation_organization_id_organization_id_fk"
+    user ||--o{ invitation : "invitation_inviter_id_user_id_fk"
+    organization ||--o{ member : "member_organization_id_organization_id_fk"
+    user ||--o{ member : "member_user_id_user_id_fk"
+    user ||--o{ session : "session_user_id_user_id_fk"
+    test_requirement ||--o{ test : "test_requirement_id_test_requirement_id_fk"
+    organization ||--o{ test_folder : "test_folder_organization_id_organization_id_fk"
+    test_spec ||--o{ test_requirement : "test_requirement_spec_id_test_spec_id_fk"
+    test_folder ||--o{ test_spec : "test_spec_folder_id_test_folder_id_fk"
+    organization ||--o{ test_spec : "test_spec_organization_id_organization_id_fk"
