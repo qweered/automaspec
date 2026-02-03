@@ -292,3 +292,32 @@ export type AuthCallbacks = {
     onSuccess?: (result: AuthCallbackResult) => void | Promise<void>
     onError?: (context: unknown) => void | Promise<void>
 }
+
+export type DrizzleSnapshotColumn = {
+    name: string
+    type: string
+    primaryKey: boolean
+    notNull: boolean
+    autoincrement: boolean
+    default?: unknown
+}
+
+export type DrizzleSnapshotForeignKey = {
+    name: string
+    tableFrom: string
+    tableTo: string
+    columnsFrom: string[]
+    columnsTo: string[]
+    onDelete: string
+    onUpdate: string
+}
+
+export type DrizzleSnapshotTable = {
+    name: string
+    columns: Record<string, DrizzleSnapshotColumn>
+    foreignKeys?: Record<string, DrizzleSnapshotForeignKey>
+}
+
+export type DrizzleSnapshot = {
+    tables: Record<string, DrizzleSnapshotTable>
+}

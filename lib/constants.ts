@@ -481,43 +481,61 @@ export const CI_CD = {
         WORKFLOW_TEMPLATE: `name: Sync Test Results to Automaspec
 
 on:
-    push:
-        branches: [main, master, dev]
-    pull_request:
-        branches: [main, master, dev]
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master, dev]
 
 jobs:
-    test-and-sync:
-        runs-on: ubuntu-latest
+  test-and-sync:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: '22'
-                  cache: 'pnpm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
 
-            - name: Install dependencies
-              run: pnpm run ci
+      - name: Install dependencies
+        run: pnpm install
 
-            - name: Run tests with JSON reporter
-              run: pnpm test -- run --reporter=json --outputFile=test-results.json
-              continue-on-error: true
+      - name: Run tests (produce JSON report)
+        id: tests
+        run: pnpm test -- --run --reporter=json --outputFile=test-results.json
+        continue-on-error: true
 
-            - name: Sync test results to Automaspec
-              if: always()
-              run: |
-                  curl -X POST \\
-                    -H "Content-Type: application/json" \\
-                    -H "x-api-key: ${'$'}{{ secrets.AUTOMASPEC_API_KEY }}" \\
-                    -d @test-results.json \\
-                    "${'$'}{{ secrets.AUTOMASPEC_WEBHOOK_URL }}"
+      - name: Sync test results to Automaspec
+        if: >-
+          always() &&
+          hashFiles('test-results.json') != ''
+        run: |
+          if [ ! -s test-results.json ]; then
+            echo "test-results.json missing/empty; skipping sync."
+            exit 0
+          fi
+
+          if [ -z "${'$'}{{ secrets.AUTOMASPEC_WEBHOOK_URL }}" ] || [ -z "${'$'}{{ secrets.AUTOMASPEC_API_KEY }}" ]; then
+            echo "Automaspec secrets missing; skipping sync."
+            exit 0
+          fi
+
+          curl -X POST \\
+            --fail-with-body \\
+            -H "Content-Type: application/json" \\
+            -H "x-api-key: ${'$'}{{ secrets.AUTOMASPEC_API_KEY }}" \\
+            -d @test-results.json \\
+            "${'$'}{{ secrets.AUTOMASPEC_WEBHOOK_URL }}"
+
+      - name: Fail job if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
 `
     },
     UI: {
@@ -531,4 +549,10 @@ jobs:
             SETTINGS: 'workflow'
         }
     }
+} as const
+
+export const DB_SCHEMA_DIAGRAM = {
+    SNAPSHOT_DIR: 'db/migrations/meta',
+    SNAPSHOT_SUFFIX: '_snapshot.json',
+    OUTPUT_PATH: 'docs/db-schema.mmd'
 } as const
