@@ -10,7 +10,6 @@
         "dev": "pnpm i && next dev",
         "ci": "pnpm install --frozen-lockfile",
         "test": "vitest",
-        "test:json": "vitest run --reporter=json --outputFile=test-results.json",
         "test:setup-playwright": "playwright install --with-deps chromium",
         "test:coverage": "vitest --coverage --run --coverage.thresholds.lines 70",
         "test:e2e": "playwright test",

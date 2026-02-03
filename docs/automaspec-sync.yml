@@ -28,7 +28,7 @@ jobs:
 
             - name: Run tests (produce JSON report)
               id: tests
-              run: pnpm test:json
+              run: pnpm test -- --run --reporter=json --outputFile=test-results.json
               continue-on-error: true
 
             - name: Sync test results to Automaspec
